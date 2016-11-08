@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <ostream>
 #include <ctime>
 
 using namespace cv;
@@ -87,20 +88,32 @@ static void read_csv(const string& filename, vector<Mat>& images, vector<int>& l
 }
 
 int main(int argc, const char *argv[]) {
-    // Check for valid command line arguments, print usage
-    // if no arguments were given.
+
+	time_t rawtime;
+	struct tm * timeinfo;
+	// Sometimes you'll need to get/set internal model data,
 	Color::Modifier red(Color::FG_RED);
 	Color::Modifier green(Color::FG_GREEN);
 	Color::Modifier blue(Color::FG_BLUE);
 	Color::Modifier def(Color::FG_DEFAULT);
-    if (argc < 2) {
-        cout << "usage: " << argv[0] << " <Training.csv.ext> <Testing.csv.ext> <output_folder> " << endl;
+
+    // Check for valid command line arguments, print usage
+    // if no arguments were given.
+    if (argc < 3) {
+        cout << "usage: " << argv[0] << " <Training.csv.ext> <Testing.csv.ext> <output_folder> {threshold}\n Default threshold is 50" << endl;
         exit(1);
     }
-    string output_folder = ".";
+    string output_folder = "EigenFacesImages";
     if (argc == 4) {
         output_folder = string(argv[3]);
     }
+
+	double threshold = 50;
+    if (argc >= 5)
+    {
+    	threshold = atof(argv[4]);
+    }
+
     // Get the path to your Training CSV.
     string fn_csv = string(argv[1]);
     	
@@ -160,23 +173,42 @@ int main(int argc, const char *argv[]) {
     //
 	cout << "Training The Recognizer with "<< images.size() <<" images \nIt may take some time" << endl;
 	// To Calculate how much time Training takes
-	std::clock_t start, end;
-	//start = std::clock();
+	clock_t start, end;
 	
    	Ptr<FaceRecognizer> model = createEigenFaceRecognizer();
 
 	start = time(0);
    	model->train(images, labels);
 	end = time(0);
-
-	cout << blue << "Time taken for training is " << (end - start) << " seconds"<< def << endl;	
+	double trainingTime, testingTime;
+	trainingTime = (end-start);
+	cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;	
 
 	int mispredicted = 0;
 	int unpredicted = 0;
 	int predictedLabel = 0;
 	double confidence = 0;
-	cout << red << "\tStart testing " << labelsTesting.size() << " images one by one \t It will take a while" << def << endl;
 	
+	
+	time(&rawtime); 
+	timeinfo = localtime(&rawtime);	
+	char currentDate[80];		
+	strftime(currentDate,80,"%Y-%m-%d_%H:%M",timeinfo);	
+	string fout = "./stat/eigen.csv";
+	
+	ofstream output; 
+	
+	ifstream testOutput(fout.c_str());
+	if (!testOutput){
+		// if file does not exist, create one and add the header
+		output.open(fout.c_str());
+		output << "Date & Time,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
+	}
+	else {
+		// if file already exists, append
+		output.open(fout.c_str(), ofstream::out | ofstream::app);
+	}
+	cout << red << "\tStart testing " << labelsTesting.size() << " images one by one \t It will take a while" << def << endl;
 	start = time(0);
 	for (int i=0; i<labelsTesting.size();i++)
 	{
@@ -193,8 +225,9 @@ int main(int argc, const char *argv[]) {
 
 	}
 	end = time(0);
-	cout << blue << "Time taken for testing is " << (end - start) << " seconds"<< def << endl;	
-
+	testingTime = (end - start);
+	cout << blue << "Time taken for testing is " << (testingTime) << " seconds"<< def << endl;	
+	
 
 	cout << "\t\tUnrecognized : " << unpredicted << endl; cout << "\t\tMispredicted : " << mispredicted << endl; 
 	double accuracy = double (labelsTesting.size() - unpredicted);
@@ -204,7 +237,9 @@ int main(int argc, const char *argv[]) {
 	string thresholdStr = format("\tThreshold: %.2f", threshold);
 	string accStr = format ("\t\tAccuracy: %.3f %%",accuracy);
 	cout << green << accStr << blue << thresholdStr << def << endl;
-
+	output << currentDate << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
+	
+	output.close();
 
     // Here is how to get the eigenvalues of this Eigenfaces model:
     Mat eigenvalues = model->getMat("eigenvalues");
@@ -212,12 +247,10 @@ int main(int argc, const char *argv[]) {
     Mat W = model->getMat("eigenvectors");
     // Get the sample mean from the training data
     Mat mean = model->getMat("mean");
-    // Display or save:
-    if(argc == 3) {
-        imshow("mean", norm_0_255(mean.reshape(1, images[0].rows)));
-    } else {
-        imwrite(format("%s/mean.png", output_folder.c_str()), norm_0_255(mean.reshape(1, images[0].rows)));
-    }
+    // save eigenfaces
+    output_folder = output_folder + "/" + currentDate;
+    imwrite(format("%s/mean.png", output_folder.c_str()), norm_0_255(mean.reshape(1, images[0].rows)));
+   
     // Display or save the Eigenfaces:
     for (int i = 0; i < min(10, W.cols); i++) {
         string msg = format("Eigenvalue #%d = %.5f", i, eigenvalues.at<double>(i));
@@ -229,12 +262,8 @@ int main(int argc, const char *argv[]) {
         // Show the image & apply a Jet colormap for better sensing.
         Mat cgrayscale;
         applyColorMap(grayscale, cgrayscale, COLORMAP_JET);
-        // Display or save:
-        if(argc == 3) {
-            imshow(format("eigenface_%d", i), cgrayscale);
-        } else {
-            imwrite(format("%s/eigenface_%d.png", output_folder.c_str(), i), norm_0_255(cgrayscale));
-        }
+        // save:
+        imwrite(format("%s/eigenface_%d.png", output_folder.c_str(), i), norm_0_255(cgrayscale));
     }
 
     // Display or save the image reconstruction at some predefined steps:
@@ -245,16 +274,9 @@ int main(int argc, const char *argv[]) {
         Mat reconstruction = subspaceReconstruct(evs, mean, projection);
         // Normalize the result:
         reconstruction = norm_0_255(reconstruction.reshape(1, images[0].rows));
-        // Display or save:
-        if(argc == 2) {
-            imshow(format("eigenface_reconstruction_%d", num_components), reconstruction);
-        } else {
-            imwrite(format("%s/eigenface_reconstruction_%d.png", output_folder.c_str(), num_components), reconstruction);
-        }
-    }
-    // Display if we are not writing to an output folder:
-    if(argc == 3) {
-        waitKey(0);
+        //save:
+        imwrite(format("%s/eigenface_reconstruction_%d.png", output_folder.c_str(), num_components), reconstruction);
+
     }
     return 0;
 }
