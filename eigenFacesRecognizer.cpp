@@ -89,35 +89,37 @@ static void read_csv(const string& filename, vector<Mat>& images, vector<int>& l
 
 int main(int argc, const char *argv[]) {
 
-	time_t rawtime;
-	struct tm * timeinfo;
-	// Sometimes you'll need to get/set internal model data,
-	Color::Modifier red(Color::FG_RED);
-	Color::Modifier green(Color::FG_GREEN);
-	Color::Modifier blue(Color::FG_BLUE);
-	Color::Modifier def(Color::FG_DEFAULT);
+    time_t rawtime;
+    struct tm * timeinfo;
+    // Sometimes you'll need to get/set internal model data,
+    Color::Modifier red(Color::FG_RED);
+    Color::Modifier green(Color::FG_GREEN);
+    Color::Modifier blue(Color::FG_BLUE);
+    Color::Modifier def(Color::FG_DEFAULT);
 
     // Check for valid command line arguments, print usage
     // if no arguments were given.
     if (argc < 3) {
-        cout << "usage: " << argv[0] << " <Training.csv.ext> <Testing.csv.ext> <output_folder> {threshold}\n Default threshold is 50" << endl;
+        cout << "usage: " << argv[0] << " <Training.csv.ext> <Testing.csv.ext> {threshold} {output_folder}\n Default threshold is 50" << endl;
         exit(1);
     }
-    string output_folder = "EigenFacesImages";
-    if (argc == 4) {
-        output_folder = string(argv[3]);
+
+    double threshold = 50;
+    if (argc >= 4)
+    {
+    	threshold = atof(argv[3]);
     }
 
-	double threshold = 50;
-    if (argc >= 5)
-    {
-    	threshold = atof(argv[4]);
+
+    string output_folder = "EigenFacesImages";
+    if (argc >= 5) {
+        output_folder = string(argv[4]);
     }
 
     // Get the path to your Training CSV.
     string fn_csv = string(argv[1]);
-    	
-	// Get the path to your Testing CSV .
+
+    // Get the path to your Testing CSV .
     string fn_csv_test = string(argv[2]);
 
     // These vectors hold the images and corresponding labels.
@@ -175,11 +177,12 @@ int main(int argc, const char *argv[]) {
 	// To Calculate how much time Training takes
 	clock_t start, end;
 	
-   	Ptr<FaceRecognizer> model = createEigenFaceRecognizer();
+   	Ptr<FaceRecognizer> model = createEigenFaceRecognizer(40);
 
 	start = time(0);
    	model->train(images, labels);
 	end = time(0);
+	model->set("threshold",threshold);
 	double trainingTime, testingTime;
 	trainingTime = (end-start);
 	cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;	
@@ -202,7 +205,7 @@ int main(int argc, const char *argv[]) {
 	if (!testOutput){
 		// if file does not exist, create one and add the header
 		output.open(fout.c_str());
-		output << "Date & Time,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
+		output << "Date & Time,Threshold,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
 	}
 	else {
 		// if file already exists, append
@@ -237,7 +240,7 @@ int main(int argc, const char *argv[]) {
 	string thresholdStr = format("\tThreshold: %.2f", threshold);
 	string accStr = format ("\t\tAccuracy: %.3f %%",accuracy);
 	cout << green << accStr << blue << thresholdStr << def << endl;
-	output << currentDate << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
+	output << currentDate << "," << threshold << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
 	
 	output.close();
 
@@ -248,8 +251,8 @@ int main(int argc, const char *argv[]) {
     // Get the sample mean from the training data
     Mat mean = model->getMat("mean");
     // save eigenfaces
-    output_folder = output_folder + "/" + currentDate;
-    imwrite(format("%s/mean.png", output_folder.c_str()), norm_0_255(mean.reshape(1, images[0].rows)));
+    output_folder = output_folder;
+    imwrite(format("%s/%s-mean.png", output_folder.c_str(), currentDate), norm_0_255(mean.reshape(1, images[0].rows)));
    
     // Display or save the Eigenfaces:
     for (int i = 0; i < min(10, W.cols); i++) {
@@ -263,7 +266,7 @@ int main(int argc, const char *argv[]) {
         Mat cgrayscale;
         applyColorMap(grayscale, cgrayscale, COLORMAP_JET);
         // save:
-        imwrite(format("%s/eigenface_%d.png", output_folder.c_str(), i), norm_0_255(cgrayscale));
+        imwrite(format("%s/%s-eigenface_%d.png", output_folder.c_str(), currentDate, i), norm_0_255(cgrayscale));
     }
 
     // Display or save the image reconstruction at some predefined steps:
@@ -275,7 +278,7 @@ int main(int argc, const char *argv[]) {
         // Normalize the result:
         reconstruction = norm_0_255(reconstruction.reshape(1, images[0].rows));
         //save:
-        imwrite(format("%s/eigenface_reconstruction_%d.png", output_folder.c_str(), num_components), reconstruction);
+        imwrite(format("%s/%s-eigenface_reconstruction_%d.png", output_folder.c_str(), currentDate,num_components), reconstruction);
 
     }
     return 0;

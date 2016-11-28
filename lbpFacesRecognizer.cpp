@@ -28,10 +28,10 @@ namespace Color {
         Code code;
         public:
                Modifier(Code pCode) : code(pCode) {}
-    	       friend std::ostream&
-	       operator<<(std::ostream& os, const Modifier& mod) {
-               return os << "\033[" << mod.code << "m";
-    	       }
+               friend std::ostream&
+                   operator<<(std::ostream& os, const Modifier& mod) {
+                   return os << "\033[" << mod.code << "m";
+                   }
 	};
 }
 
@@ -56,19 +56,19 @@ static void read_csv(const string& filename, vector<Mat>& images, vector<int>& l
 
 int main(int argc, const char *argv[]) {
 
-	time_t rawtime;
-	struct tm * timeinfo;
-	
-	
-	// To Calculate how much time Training takes
-	clock_t start, end;
-	
-	
-	// Sometimes you'll need to get/set internal model data,
-	Color::Modifier red(Color::FG_RED);
-	Color::Modifier green(Color::FG_GREEN);
-	Color::Modifier blue(Color::FG_BLUE);
-	Color::Modifier def(Color::FG_DEFAULT);
+     time_t rawtime;
+     struct tm * timeinfo;
+
+
+    // To Calculate how much time Training takes
+    clock_t start, end;
+
+
+    // Sometimes you'll need to get/set internal model data,
+    Color::Modifier red(Color::FG_RED);
+    Color::Modifier green(Color::FG_GREEN);
+    Color::Modifier blue(Color::FG_BLUE);
+    Color::Modifier def(Color::FG_DEFAULT);
 
 
 
@@ -78,123 +78,117 @@ int main(int argc, const char *argv[]) {
     // if no arguments were given.
     if (argc < 3) {
         cout << "usage: " << argv[0] << " <csvTraining.ext> <csvTesting.ext> {threshold}  \n Default threshold is 50" << endl;
-       	exit(1);
+        exit(1);
     }
     double threshold = 50;
     if (argc >= 4)
     {
-    	threshold = atof(argv[3]);
+       threshold = atof(argv[3]);
     }
 
     // Get the path to your Training CSV.
     string fn_csv = string(argv[1]);
-    	
-	// Get the path to your Testing CSV .
+
+    // Get the path to your Testing CSV .
     string fn_csv_test = string(argv[2]);
-    	
+
     // These vectors hold the images and corresponding labels.
     vector<Mat> images, imagesTesting;
     vector<int> labels, labelsTesting;
-    	
-	cout << "Reading Training Images" << endl;
+
+    cout << "Reading Training Images" << endl;
     try {
         read_csv(fn_csv, images, labels);
     } 
-	catch (cv::Exception& e) {
+    catch (cv::Exception& e) {
         cerr << "Error opening file \"" << fn_csv << "\". Reason: " << e.msg << endl;
         // nothing more we can do
         exit(1);
     }
-    	
-    	cout << "Reading Testing Images" << endl;
-	try {
-       	read_csv(fn_csv_test, imagesTesting, labelsTesting);
-    }catch (cv::Exception& e) {
-       	cerr << "Error opening file \"" << fn_csv_test << "\". Reason: " << e.msg << endl;
-       	// nothing more we can do
-       	exit(1);
-   	}
+
+    cout << "Reading Testing Images" << endl;
+    try {
+	read_csv(fn_csv_test, imagesTesting, labelsTesting);
+    } catch (cv::Exception& e) {
+	cerr << "Error opening file \"" << fn_csv_test << "\". Reason: " << e.msg << endl;
+	// nothing more we can do
+	exit(1);
+   }
 
 
-   	if(images.size() <= 1) {
-       	string error_message = "This demo needs at least 2 images to work. Please add more images to your data set!";
-       	CV_Error(CV_StsError, error_message);
-   	}
+   if(images.size() <= 1) {
+	string error_message = "This demo needs at least 2 images to work. Please add more images to your data set!";
+	CV_Error(CV_StsError, error_message);
+   }
 
 
-	
-	time(&rawtime); 
-	timeinfo = localtime(&rawtime);	
-	char currentDate[80];		
-	strftime(currentDate,80,"%Y-%m-%d_%H:%M",timeinfo);	
-	string fout = "./stat/LBP.csv";
-	
-	ofstream output; 
-	
-	ifstream testOutput(fout.c_str());
-	if (!testOutput){
-		// if file does not exist, create one and add the header
-		output.open(fout.c_str());
-		output << "Date & Time,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
-	}
-	else {
-		// if file already exists, append
-		output.open(fout.c_str(), ofstream::out | ofstream::app);
-	}
-	double trainingTime, testingTime;
-	// Training Stage
-	cout << "Training The Recognizer with "<<images.size()<<" images \nIt may take some time" << endl;
-	Ptr<FaceRecognizer> model = createLBPHFaceRecognizer();
-	start = time(0);
-	model->train(images, labels);
-	end = time(0);
-	int mispredicted = 0;
-	int unpredicted = 0;
-	trainingTime = (end-start);
-	cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;
 
+   time(&rawtime);
+   timeinfo = localtime(&rawtime);
+   char currentDate[80];
+   strftime(currentDate,80,"%Y-%m-%d_%H:%M",timeinfo);
+   string fout = "./stat/LBP.csv";
 
-	// Setting Threshold 
-	model->set("threshold",threshold);
-	
-	// Testing Stage
-	mispredicted = 0;
-	unpredicted = 0;
-	int predictedLabel = 0;
-	double confidence = 0;
-	cout << "Start testing " << labelsTesting.size() << " images one by one with threshold = "<< threshold << endl;
-	start = time(0);
-	for (int i=0; i<labelsTesting.size();i++)
+   ofstream output;
+
+   ifstream testOutput(fout.c_str());
+    if (!testOutput){
+	// if file does not exist, create one and add the header
+	output.open(fout.c_str());
+	output << "Date & Time,Threshold,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
+    }
+    else {
+	// if file already exists, append
+	output.open(fout.c_str(), ofstream::out | ofstream::app);
+    }
+    double trainingTime, testingTime;
+    // Training Stage
+    cout << "Training The Recognizer with "<<images.size()<<" images \nIt may take some time" << endl;
+    Ptr<FaceRecognizer> model = createLBPHFaceRecognizer();
+    start = time(0);
+    model->train(images, labels);
+    end = time(0);
+    int mispredicted = 0;
+    int unpredicted = 0;
+    trainingTime = (end-start);
+    cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;
+
+    // Setting Threshold
+    model->set("threshold",threshold);
+    // Testing Stage
+    mispredicted = 0;
+    unpredicted = 0;
+    int predictedLabel = 0;
+    double confidence = 0;
+    cout << red << "Start testing " << labelsTesting.size() << " images one by one with threshold = "<< threshold << def << endl;
+    start = time(0);
+    for (int i=0; i<labelsTesting.size();i++)
+    {
+        model->predict(imagesTesting[i], predictedLabel, confidence);
+	if (predictedLabel == -1)
 	{
-		model->predict(imagesTesting[i], predictedLabel, confidence);
-		if (predictedLabel == -1)
-		{
-			unpredicted++;
-			confidence = -1.0;
-		}
-		if (predictedLabel != labelsTesting[i] && predictedLabel != -1)
-		{
-			mispredicted++;
-		}
+		unpredicted++;
+		confidence = -1.0;
 	}
-	end = time(0);
-	testingTime = (end - start);
-	cout << blue << "Time taken for testing is " << (testingTime) << " seconds"<< def << endl;	
-	cout << "\t\tUnrecognized : " << unpredicted << endl; cout << "\t\tMispredicted : " << mispredicted << endl;
-	double accuracy = double (labelsTesting.size() - unpredicted);
-	accuracy = accuracy - mispredicted;
-	accuracy = accuracy / (1.0*labelsTesting.size());
-	accuracy = accuracy * 100.00;
-	output << mispredicted << "," << unpredicted << "," << accuracy << endl;
+	if (predictedLabel != labelsTesting[i] && predictedLabel != -1)
+	{
+		mispredicted++;
+	}
+    }
+    end = time(0);
+    testingTime = (end - start);
+    cout << blue << "Time taken for testing is " << (testingTime) << " seconds"<< def << endl;
+    cout << "\t\tUnrecognized : " << unpredicted << endl; cout << "\t\tMispredicted : " << mispredicted << endl;
+    double accuracy = double (labelsTesting.size() - unpredicted);
+    accuracy = accuracy - mispredicted;
+    accuracy = accuracy / (1.0*labelsTesting.size());
+    accuracy = accuracy * 100.00;
 
-	string acc = format("Number of Test Subjects is : %d\tNumber of Test Images is : %d \nAccuracy is %.3f %%", (labelsTesting[labelsTesting.size()-1] + 1),labelsTesting.size(),accuracy); 
+    string acc = format("Number of Test Subjects is : %d\tNumber of Test Images is : %d \nAccuracy is %.3f %%", (labelsTesting[labelsTesting.size()-1] + 1),labelsTesting.size(),accuracy); 
+    cout << green << acc << def << endl;
+    output << currentDate << "," << threshold << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
+    output.close();
 
-
-	cout << green << acc << def << endl;
-
-	output << currentDate << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
-	output.close();
-	
 
 
     cout << "Model Information:" << endl;
@@ -204,7 +198,6 @@ int main(int argc, const char *argv[]) {
             model->getInt("grid_x"),
             model->getInt("grid_y"),
             model->getDouble("threshold"));
-	
     cout << model_info << endl;
     return 0;
 }
