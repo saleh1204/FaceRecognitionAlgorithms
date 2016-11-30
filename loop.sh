@@ -41,16 +41,16 @@ step=$6
 threshold=$initial_threshold
 counter=1
 
-if [ "$algo" == "all" ]; then
-	echo Compiling Both Files
+#if [ "$algo" == "all" ]; then
+	#echo Compiling Both Files
 	#make all
-elif [ "$algo" == "lbp"	]; then
-	echo Compiling LBP File
+#elif [ "$algo" == "lbp"	]; then
+	#echo Compiling LBP File
 	#make lbp
-elif [ "$algo" == 'eigen' ]; then
-	echo Compiling EigenFaces File
+#elif [ "$algo" == 'eigen' ]; then
+	#echo Compiling EigenFaces File
 	#make eigen
-fi
+#fi
 
 while [ $counter -le $repeat ];do
 	echo Iteration $counter of $repeat
