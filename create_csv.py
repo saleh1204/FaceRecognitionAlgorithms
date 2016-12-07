@@ -49,7 +49,7 @@ if __name__ == "__main__":
                 #print "%s%s%d" % (abs_path, SEPARATOR, label)
             random.shuffle(total)
             totalNumber = len(total)
-            testNumber = int(math.ceil(totalNumber * TEST_PERCENTAGE / 100))
+            testNumber = int(math.ceil(totalNumber * TEST_PERCENTAGE / 100)+1)
             #print testNumber
             test_set  = total[:testNumber]
             train_set = total[testNumber:]

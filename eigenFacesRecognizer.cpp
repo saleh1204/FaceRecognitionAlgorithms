@@ -177,7 +177,7 @@ int main(int argc, const char *argv[]) {
 	// To Calculate how much time Training takes
 	clock_t start, end;
 	
-   	Ptr<FaceRecognizer> model = createEigenFaceRecognizer(15);
+   	Ptr<FaceRecognizer> model = createEigenFaceRecognizer();
 
 	start = time(0);
    	model->train(images, labels);
