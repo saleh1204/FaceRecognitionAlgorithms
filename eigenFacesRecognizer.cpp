@@ -100,19 +100,24 @@ int main(int argc, const char *argv[]) {
     // Check for valid command line arguments, print usage
     // if no arguments were given.
     if (argc < 3) {
-        cout << "usage: " << argv[0] << " <Training.csv.ext> <Testing.csv.ext> {threshold} {output_folder}\n Default threshold is 50" << endl;
+        cout << "usage: " << argv[0] << " <Training.csv.ext> <Testing.csv.ext> {initial_threshold} {final_threshold} {step} {output_folder}\n Default threshold is 50" << endl;
         exit(1);
     }
 
-    double threshold = 50;
+    double threshold = 50, final_threshold, step;
     if (argc >= 4)
     {
     	threshold = atof(argv[3]);
     }
+    if (argc >=5)
+    {
+	final_threshold = atof(argv[4]);
+	step = atof(argv[5]);
+    }
 
 
     string output_folder = "EigenFacesImages";
-    if (argc >= 5) {
+    if (argc >= 7) {
         output_folder = string(argv[4]);
     }
 
@@ -126,7 +131,6 @@ int main(int argc, const char *argv[]) {
     vector<Mat> images, imagesTesting;
     vector<int> labels, labelsTesting;
     // Read in the data. This can fail if no valid
-    // input filename is given.
 	cout << "Reading Training Images" << endl;
     try {
         read_csv(fn_csv, images, labels);
@@ -177,98 +181,120 @@ int main(int argc, const char *argv[]) {
 	// To Calculate how much time Training takes
 	clock_t start, end;
 	
-   	Ptr<FaceRecognizer> model = createEigenFaceRecognizer();
+   	Ptr<FaceRecognizer> model = createEigenFaceRecognizer(0);
 
 	start = time(0);
    	model->train(images, labels);
 	end = time(0);
-	model->set("threshold",threshold);
 	double trainingTime, testingTime;
 	trainingTime = (end-start);
-	cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;	
 
-	int mispredicted = 0;
-	int unpredicted = 0;
-	int predictedLabel = 0;
-	double confidence = 0;
-	
-	
-	time(&rawtime); 
-	timeinfo = localtime(&rawtime);	
-	char currentDate[80];		
-	strftime(currentDate,80,"%Y-%m-%d_%H:%M",timeinfo);	
-	string fout = "./stat/eigen.csv";
-	
-	ofstream output; 
-	
-	ifstream testOutput(fout.c_str());
-	if (!testOutput){
-		// if file does not exist, create one and add the header
-		output.open(fout.c_str());
-		output << "Date & Time,Threshold,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
-	}
-	else {
-		// if file already exists, append
-		output.open(fout.c_str(), ofstream::out | ofstream::app);
-	}
-	cout << red << "\tStart testing " << labelsTesting.size() << " images one by one \t It will take a while" << def << endl;
-	start = time(0);
-	for (int i=0; i<labelsTesting.size();i++)
+	Mat eigenvalues, W, mean;
+	char currentDate[80];
+
+	// Testing phase
+	for (; threshold <= final_threshold; threshold += step)
 	{
-		model->predict(imagesTesting[i], predictedLabel, confidence);
-		if (predictedLabel == -1)
-		{
-			unpredicted++;
-			confidence = -1.0;
-		}
-		if (predictedLabel != labelsTesting[i] && predictedLabel != -1)
-		{
-			mispredicted++;
-		}
+		model->set("threshold",threshold);
 
-	}
-	end = time(0);
-	testingTime = (end - start);
-	cout << blue << "Time taken for testing is " << (testingTime) << " seconds"<< def << endl;	
+		cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;	
+
+	
+		int mispredicted = 0;
+		int unpredicted = 0;
+		int correct = 0;
+		int predictedLabel = 0;
+		double confidence = 0;
+	
+	
+		time(&rawtime); 
+		timeinfo = localtime(&rawtime);	
+	
+		strftime(currentDate,80,"%Y-%m-%d_%H:%M",timeinfo);	
+		string fout = "./stat/eigen.csv";
+	
+		ofstream output; 
+	
+		ifstream testOutput(fout.c_str());
+		if (!testOutput){
+			// if file does not exist, create one and add the header
+			output.open(fout.c_str());
+			output << "Date & Time,Threshold,Total Test Images,Correct,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time,EigenValue #0,EigenValue #1,EigenValue #2,EigenValue #3,EigenValue #4,EigenValue #5,EigenValue #6,EigenValue #7,EigenValue #8,EigenValue #9" << endl;
+		}
+		else {
+			// if file already exists, append
+			output.open(fout.c_str(), ofstream::out | ofstream::app);
+		}
+		cout << red << "\tStart testing " << labelsTesting.size() << " images one by one \t It will take a while" << def << endl;
+		start = time(0);
+		for (int i=0; i<labelsTesting.size();i++)
+		{
+			model->predict(imagesTesting[i], predictedLabel, confidence);
+			if (predictedLabel == -1) // cannot predict
+			{
+				unpredicted++;
+				confidence = -1.0;
+			}
+			if (predictedLabel != labelsTesting[i] && predictedLabel != -1)
+			{
+				mispredicted++;
+			}
+			if (predictedLabel == labelsTesting[i])
+			{
+				correct++;
+			}
+
+		}
+		end = time(0);
+		testingTime = (end - start);
+		cout << blue << "Time taken for testing is " << (testingTime) << " seconds"<< def << endl;	
 	
 
-	cout << "\t\tUnrecognized : " << unpredicted << endl; cout << "\t\tMispredicted : " << mispredicted << endl; 
-	double accuracy = double (labelsTesting.size() - unpredicted);
-	accuracy = accuracy - mispredicted;
-	accuracy = accuracy / (1.0*labelsTesting.size());
-	accuracy = accuracy * 100.00;
-	string thresholdStr = format("\tThreshold: %.2f", threshold);
-	string accStr = format ("\t\tAccuracy: %.3f %%",accuracy);
-	cout << green << accStr << blue << thresholdStr << def << endl;
-	output << currentDate << "," << threshold << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
+		cout << "\t\tUnrecognized : " << unpredicted << endl; 
+		cout << "\t\tMispredicted : " << mispredicted << endl; 
+		cout << "\t\tCorrect : "      << correct << endl;
+		double accuracy = double (labelsTesting.size() - unpredicted);
+		accuracy = accuracy - mispredicted;
+		accuracy = accuracy / (1.0*labelsTesting.size());
+		accuracy = accuracy * 100.00;
+		string thresholdStr = format("\tThreshold: %.2f", threshold);
+		string accStr = format ("\t\tAccuracy: %.3f %%",accuracy);
+		cout << green << accStr << blue << thresholdStr << def << endl;
+
+		// Log Result 
+		output << currentDate << "," << threshold << "," << labelsTesting.size() << "," << correct << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime ;
 	
+	
+
+		// Here is how to get the eigenvalues of this Eigenfaces model:
+		eigenvalues = model->getMat("eigenvalues");
+		// And we can do the same to display the Eigenvectors (read Eigenfaces):
+		W = model->getMat("eigenvectors");
+		// Get the sample mean from the training data
+		mean = model->getMat("mean");
+		// save mean of the eigenfaces
+		imwrite(format("%s/%s-mean.png", output_folder.c_str(), currentDate), norm_0_255(mean.reshape(1, images[0].rows)));
+	   
+		// save the Eigenfaces:
+		for (int i = 0; i < min(10, W.cols); i++) {
+		    string msg = format("Eigenvalue #%d = %.5f", i, eigenvalues.at<double>(i));
+			// Log Eigenvalues
+			output << "," << eigenvalues.at<double>(i);
+			// print the eigenvalue 
+		    cout << msg << endl;
+		    // get eigenvector #i
+		    Mat ev = W.col(i).clone();
+		    // Reshape to original size & normalize to [0...255] for imshow.
+		    Mat grayscale = norm_0_255(ev.reshape(1, height));
+		    // Show the image & apply a Jet colormap for better sensing.
+		    //Mat cgrayscale;
+		    //applyColorMap(grayscale, cgrayscale, COLORMAP_JET);
+		    // save:
+		    imwrite(format("%s/%s-eigenface_%d.png", output_folder.c_str(), currentDate, i), grayscale);
+		}
+	output << endl;
 	output.close();
-
-    // Here is how to get the eigenvalues of this Eigenfaces model:
-    Mat eigenvalues = model->getMat("eigenvalues");
-    // And we can do the same to display the Eigenvectors (read Eigenfaces):
-    Mat W = model->getMat("eigenvectors");
-    // Get the sample mean from the training data
-    Mat mean = model->getMat("mean");
-    // save eigenfaces
-    output_folder = output_folder;
-    imwrite(format("%s/%s-mean.png", output_folder.c_str(), currentDate), norm_0_255(mean.reshape(1, images[0].rows)));
-   
-    // Display or save the Eigenfaces:
-    for (int i = 0; i < min(10, W.cols); i++) {
-        string msg = format("Eigenvalue #%d = %.5f", i, eigenvalues.at<double>(i));
-        cout << msg << endl;
-        // get eigenvector #i
-        Mat ev = W.col(i).clone();
-        // Reshape to original size & normalize to [0...255] for imshow.
-        Mat grayscale = norm_0_255(ev.reshape(1, height));
-        // Show the image & apply a Jet colormap for better sensing.
-        Mat cgrayscale;
-        applyColorMap(grayscale, cgrayscale, COLORMAP_JET);
-        // save:
-        imwrite(format("%s/%s-eigenface_%d.png", output_folder.c_str(), currentDate, i), norm_0_255(cgrayscale));
     }
-
     // Display or save the image reconstruction at some predefined steps:
     for(int num_components = min(W.cols, 10); num_components < min(W.cols, 300); num_components+=15) {
         // slice the eigenvectors from the model
@@ -281,5 +307,6 @@ int main(int argc, const char *argv[]) {
         imwrite(format("%s/%s-eigenface_reconstruction_%d.png", output_folder.c_str(), currentDate,num_components), reconstruction);
 
     }
+    
     return 0;
 }

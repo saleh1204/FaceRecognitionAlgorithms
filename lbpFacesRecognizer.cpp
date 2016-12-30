@@ -135,7 +135,7 @@ int main(int argc, const char *argv[]) {
     if (!testOutput){
 	// if file does not exist, create one and add the header
 	output.open(fout.c_str());
-	output << "Date & Time,Threshold,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
+	output << "Date & Time,Threshold,Total Test Images,Correct,Mispredicted,Unpredicted,Accuracy,Training Time,Testing Time" << endl;
     }
     else {
 	// if file already exists, append
@@ -149,7 +149,8 @@ int main(int argc, const char *argv[]) {
     model->train(images, labels);
     end = time(0);
     int mispredicted = 0;
-    int unpredicted = 0;
+    int unpredicted  = 0;
+	int correct      = 0;
     trainingTime = (end-start);
     cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;
 
@@ -164,21 +165,27 @@ int main(int argc, const char *argv[]) {
     start = time(0);
     for (int i=0; i<labelsTesting.size();i++)
     {
-        model->predict(imagesTesting[i], predictedLabel, confidence);
-	if (predictedLabel == -1)
-	{
-		unpredicted++;
-		confidence = -1.0;
-	}
-	if (predictedLabel != labelsTesting[i] && predictedLabel != -1)
-	{
-		mispredicted++;
-	}
+		model->predict(imagesTesting[i], predictedLabel, confidence);
+		if (predictedLabel == -1)
+		{
+			unpredicted++;
+			confidence = -1.0;
+		}
+		if (predictedLabel != labelsTesting[i] && predictedLabel != -1)
+		{
+			mispredicted++;
+		}
+		if (predictedLabel == labelsTesting[i])
+		{
+			correct++;
+		}
     }
     end = time(0);
     testingTime = (end - start);
     cout << blue << "Time taken for testing is " << (testingTime) << " seconds"<< def << endl;
-    cout << "\t\tUnrecognized : " << unpredicted << endl; cout << "\t\tMispredicted : " << mispredicted << endl;
+    cout << "\t\tUnrecognized : " << unpredicted << endl; 
+	cout << "\t\tMispredicted : " << mispredicted << endl;
+	cout << "\t\tCorrect : " 	  << correct << endl;
     double accuracy = double (labelsTesting.size() - unpredicted);
     accuracy = accuracy - mispredicted;
     accuracy = accuracy / (1.0*labelsTesting.size());
@@ -186,7 +193,9 @@ int main(int argc, const char *argv[]) {
 
     string acc = format("Number of Test Subjects is : %d\tNumber of Test Images is : %d \nAccuracy is %.3f %%", (labelsTesting[labelsTesting.size()-1] + 1),labelsTesting.size(),accuracy); 
     cout << green << acc << def << endl;
-    output << currentDate << "," << threshold << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
+
+	// Logging the data
+    output << currentDate << "," << threshold << "," << labelsTesting.size() << "," << correct << "," << mispredicted << "," << unpredicted << "," << accuracy << "," << trainingTime << "," << testingTime << endl ;
     output.close();
 
 

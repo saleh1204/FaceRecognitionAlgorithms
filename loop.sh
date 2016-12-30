@@ -15,20 +15,22 @@ function lbp_algo
 
 function eigen_algo 
 {
-	if [ -z "$1" ] || [ -z "$2" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
 		echo error: in $0
 		exit
 	fi
 	eigen_dataset=$1
 	eigen_threshold=$2
-	./EigenFaces "$eigen_dataset"_Training.csv "$eigen_dataset"_Testing.csv $eigen_threshold
+	eigen_finalThreshold=$3
+	eigen_step=$4
+	./EigenFaces "$eigen_dataset"_Training.csv "$eigen_dataset"_Testing.csv $eigen_threshold $eigen_finalThreshold $eigen_step
 }
 
 
 
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
 	echo usage: $0 algo dataset Repetetion initial_threshold final_threshold step
-	echo algo is either lbp,eigen,all
+	echo algo is either lbp or eigen
 	exit
 fi
 
@@ -53,22 +55,21 @@ counter=1
 #fi
 
 while [ $counter -le $repeat ];do
-	echo Iteration $counter of $repeat
-	while [ $threshold -le $final_threshold ]; do
-		echo -e "\t Threshold $threshold"
-		if [ "$algo" == "all" ]; then
-			lbp_algo $dataset $threshold
-			eigen_algo $dataset $threshold
-		elif [ "$algo" == "lbp"	]; then
-			lbp_algo $dataset $threshold
-		elif [ "$algo" == 'eigen' ]; then
-			eigen_algo $dataset $threshold
+		echo Iteration $counter of $repeat
+		if [ "$algo" == 'eigen' ]; then
+			eigen_algo $dataset $threshold $final_threshold $step
+		else 
+			while [ $threshold -le $final_threshold ]; do
+				echo -e "\t Threshold $threshold"
+				if [ "$algo" == "lbp" ]; then
+					lbp_algo $dataset $threshold
+				fi
+				let threshold=threshold+step
+			done
+			let threshold=initial_threshold
 		fi
-		let threshold=threshold+step
-	done
-	echo -e "\t Done with one iteration"
-	let threshold=initial_threshold
-	let counter=counter+1
+		echo -e "\t Done with $counter iteration"
+		let counter=counter+1
 done
 
 
