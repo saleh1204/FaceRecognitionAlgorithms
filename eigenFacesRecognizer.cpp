@@ -17,8 +17,9 @@
  */
 
 #include "opencv2/core/core.hpp"
-#include "opencv2/contrib/contrib.hpp"
+//#include "opencv2/contrib/contrib.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include <opencv2/face.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -27,6 +28,7 @@
 #include <ctime>
 
 using namespace cv;
+using namespace cv::face;
 using namespace std;
 
 namespace Color {
@@ -181,7 +183,7 @@ int main(int argc, const char *argv[]) {
 	// To Calculate how much time Training takes
 	clock_t start, end;
 	
-   	Ptr<FaceRecognizer> model = createEigenFaceRecognizer(0);
+   	Ptr<EigenFaceRecognizer> model = EigenFaceRecognizer::create(0);
 
 	start = time(0);
    	model->train(images, labels);
@@ -195,7 +197,8 @@ int main(int argc, const char *argv[]) {
 	// Testing phase
 	for (; threshold <= final_threshold; threshold += step)
 	{
-		model->set("threshold",threshold);
+//		model->set("threshold",threshold);
+	        model->setThreshold(threshold);
 
 		cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;	
 
@@ -267,11 +270,14 @@ int main(int argc, const char *argv[]) {
 	
 
 		// Here is how to get the eigenvalues of this Eigenfaces model:
-		eigenvalues = model->getMat("eigenvalues");
+		//eigenvalues = model->getMat("eigenvalues");
+		eigenvalues = model->getEigenValues();
 		// And we can do the same to display the Eigenvectors (read Eigenfaces):
-		W = model->getMat("eigenvectors");
+		//W = model->getMat("eigenvectors");
+		W = model->getEigenVectors();
 		// Get the sample mean from the training data
-		mean = model->getMat("mean");
+		//mean = model->getMat("mean");
+		mean = model->getMean();
 		// save mean of the eigenfaces
 		imwrite(format("%s/%s-mean.png", output_folder.c_str(), currentDate), norm_0_255(mean.reshape(1, images[0].rows)));
 	   
@@ -299,8 +305,8 @@ int main(int argc, const char *argv[]) {
     for(int num_components = min(W.cols, 10); num_components < min(W.cols, 300); num_components+=15) {
         // slice the eigenvectors from the model
         Mat evs = Mat(W, Range::all(), Range(0, num_components));
-        Mat projection = subspaceProject(evs, mean, images[0].reshape(1,1));
-        Mat reconstruction = subspaceReconstruct(evs, mean, projection);
+        Mat projection = LDA::subspaceProject(evs, mean, images[0].reshape(1,1));
+        Mat reconstruction = LDA::subspaceReconstruct(evs, mean, projection);
         // Normalize the result:
         reconstruction = norm_0_255(reconstruction.reshape(1, images[0].rows));
         //save:

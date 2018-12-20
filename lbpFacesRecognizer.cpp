@@ -1,6 +1,8 @@
-#include "opencv2/core/core.hpp"
-#include "opencv2/contrib/contrib.hpp"
+//#include "opencv2/core/core.hpp"
+//#include "opencv2/contrib/contrib.hpp"
 #include "opencv2/highgui/highgui.hpp"
+
+#include <opencv2/face.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -11,6 +13,7 @@
 
 
 using namespace cv;
+using namespace cv::face;
 using namespace std;
 
 namespace Color {
@@ -144,7 +147,7 @@ int main(int argc, const char *argv[]) {
     double trainingTime, testingTime;
     // Training Stage
     cout << "Training The Recognizer with "<<images.size()<<" images \nIt may take some time" << endl;
-    Ptr<FaceRecognizer> model = createLBPHFaceRecognizer();
+    Ptr<LBPHFaceRecognizer> model = LBPHFaceRecognizer::create();
     start = time(0);
     model->train(images, labels);
     end = time(0);
@@ -155,7 +158,8 @@ int main(int argc, const char *argv[]) {
     cout << blue << "Time taken for training is " << (trainingTime) << " seconds"<< def << endl;
 
     // Setting Threshold
-    model->set("threshold",threshold);
+    //model->set("threshold",threshold);
+    model->setThreshold(threshold);
     // Testing Stage
     mispredicted = 0;
     unpredicted = 0;
@@ -201,12 +205,18 @@ int main(int argc, const char *argv[]) {
 
 
     cout << "Model Information:" << endl;
+//    string model_info = format("\tLBPH(radius=%i, neighbors=%i, grid_x=%i, grid_y=%i, threshold=%.2f)",
+//            model->getInt("radius"),
+//            model->getInt("neighbors"),
+//            model->getInt("grid_x"),
+//            model->getInt("grid_y"),
+//            model->getDouble("threshold"));
     string model_info = format("\tLBPH(radius=%i, neighbors=%i, grid_x=%i, grid_y=%i, threshold=%.2f)",
-            model->getInt("radius"),
-            model->getInt("neighbors"),
-            model->getInt("grid_x"),
-            model->getInt("grid_y"),
-            model->getDouble("threshold"));
+            model->getRadius(),
+            model->getNeighbors(),
+            model->getGridX(),
+            model->getGridY(),
+            model->getThreshold());
     cout << model_info << endl;
     return 0;
 }
